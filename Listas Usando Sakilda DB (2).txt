@@ -1,0 +1,268 @@
+select * from filme;
+/*
+1. Listar os nome dos clientes que locaram filmes na data '2005-05-30 23:47:56';
+2. Listar os nomes dos funcionários da loja 1;
+3. Fazer uma média dos valores gastos pelo cliente 230 em locações;
+4. Contar o número de filmes, que o funcionário 2 alugou;
+5. Listar os nomes dos clientes que locaram filmes com o funcionário 1;
+6. Listar os nome dos filmes da categoria 'Documentary', com preço de locação de 2.99;
+7. Listar o nome do cliente, a data de aluguel e data de devolução das locações dos clientes de
+id 330 e 300 e também mostrar qual a categoria do filmes;
+8. Listar o idiomas dos filmes locados pelo cliente 330;
+*/
+
+/*=Nome Cliente, data do aluguel e titulo do filme*/
+select cliente.primeiro_nome, aluguel.data_de_aluguel, filme.titulo from cliente
+join aluguel on cliente.cliente_id = aluguel.cliente_id
+join inventario on inventario.inventario_id = aluguel.inventario_id
+join filme on filme.filme_id = inventario.filme_id
+where aluguel.data_de_aluguel = '2005-05-30 23:47:56';
+
+/*1*/
+select cliente.primeiro_nome from cliente 
+join aluguel on cliente.cliente_id = aluguel.cliente_id
+where aluguel.data_de_aluguel = '2005-05-30 23:47:56';
+
+/*2*/
+select f.primeiro_nome from funcionario f  
+join loja l  on l.loja_id = f.loja_id 
+where f.loja_id = '1';
+
+/*3*/
+SELECT c.primeiro_nome, AVG(valor) FROM pagamento p
+join cliente c on c.cliente_id = p.cliente_id
+where cliente_id = '230';
+
+/*4*/
+select count(data_de_aluguel) from aluguel a join
+funcionario f on f.funcionario_id = a.funcionario_id where f.funcionario_id = '2';
+
+/*5-Listar os nomes dos clientes que locaram filmes com o funcionário 1;*/
+select c.primeiro_nome from cliente c
+join aluguel a on a.cliente_id = c.cliente_id
+join funcionario f on f.aluguel_id = a.aluguel_id;
+
+
+/*6*/
+select f.titulo from filme f 
+join filme_categoria fc on fc.filme_id = f.filme_id 
+join categoria c on fc.categoria_id = c.categoria_id
+where c.nome = 'documentary' and f.preco_da_locacao = '2.99';
+
+/*7*/
+select c.primeiro_nome, a.data_de_aluguel, a.data_de_devolucao, ca.nome from filme f 
+join filme_categoria fc on fc.filme_id = f.filme_id 
+join categoria ca on ca.categoria_id = fc.categoria_id
+join inventario inv on inv.filme_id =  f.filme_id 
+join aluguel a on a.inventario_id = inv.inventario_id
+join cliente c on c.cliente_id = a.cliente_id 
+where c.cliente_id = '330' or c.cliente_id = '300';
+
+/*8*/
+select i.nome from idioma i
+join filme f on f.idioma_id = i.idioma_id
+join inventario inv on inv.filme_id = f.filme_id
+join aluguel a on a.inventario_id = inv.inventario_id
+where a.cliente_id = 330;
+
+/*
+Exercício de Sala de Aula(Agregação):
+1. Listar os cliente_id ou primeiro_nome dos clientes com o valor total gastos em locações;
+2. Listar os cliente_id ou primeiro_nome dos clientes com a média do valor gastos em
+locações;
+3. Listar o titulo dos filmes e número total de atores de cada filme;
+4. Listar o nome de todos os cliente e o número de filmes alugados por ele;
+5. Listar o primeiro_nome dos clientes que alugaram mais que 10 filmes;
+6. Listar primeiro_nome do cliente 50 e quantos filmes ele alugou;
+7. Listar o titulo dos filmes que possuem mais que 10 atores;
+8. Listar os países que possuem mais que 15 cidades em seu cadastro.
+*/
+
+/*1*/
+select cliente.primeiro_nome, sum(pagamento.valor) from cliente
+join pagamento on pagamento.cliente_id = cliente.cliente_id
+group by cliente.cliente_id; 
+
+/*2*/
+select cliente.primeiro_nome, avg(pagamento.valor) from cliente
+join pagamento on pagamento.cliente_id = cliente.cliente_id
+group by cliente.cliente_id;
+
+/*3*/
+select filme.titulo, count(ator.ator_id) from filme
+join filme_ator on filme_ator.filme_id = filme.filme_id
+join ator on ator.ator_id = filme_ator.ator_id
+group by filme.filme_id;
+
+/*4*/
+select cliente.primeiro_nome, count(inventario.filme_id) from cliente
+join aluguel on aluguel.cliente_id = cliente.cliente_id
+join inventario on inventario.inventario_id = aluguel.inventario_id
+join filme on filme.filme_id = inventario.filme_id
+group by cliente.cliente_id;
+
+select primeiro_nome from cliente
+where cliente_id in (select cliente_id from aluguel where data_de_aluguel = '2005-05-30 23:47:56');
+
+
+/*a)Criar uma view com primeiro_nome Cliente e
+Cidade que mora;*/
+
+create view cliente_cidade_vw as
+select cliente.primeiro_nome, cidade.cidade from cliente
+join endereco on cliente.endereco_id = endereco.endereco_id
+join cidade on endereco.cidade_id = cidade.cidade_id
+group by cliente.cliente_id;
+
+select * from cliente_cidade_vw;
+
+/*b)Criar uma view com titulo Filme e Categoria;*/
+
+create view titulo_filme_categoria_vw as
+select filme.titulo, categoria.nome from filme
+join filme_categoria on  filme_categoria.filme_id = filme.filme_id
+join categoria on filme_categoria.categoria_id = categoria.categoria_id
+group by filme.filme_id;
+
+select * from titulo_filme_categoria_vw;
+
+/*FUNCOES*/
+
+SET GLOBAL log_bin_trust_function_creators = 1; /*ativar algo da funcao*/
+
+/* drop function nome funcao;*/
+
+create function soma_fn(a int,b int)
+returns int
+return a+b;
+
+select soma_fn(15, 15) as soma;
+
+create function multiplica_fn(a int,b int)
+returns int
+return a*b;
+
+select multiplica_fn(2, 10) as multiplica;
+
+drop function multiplica_fn;
+
+create function subtrai_fn(a int,b int)
+returns int
+return a-b;
+
+select subtrai_fn(10, 2) as subtrai;
+
+/*
+Utilizar a função soma para aumenta o valor do filme
+preco_da_locacao(select);
+Utilizar a função soma para aumenta o valor do filme preco_da_locacao
+filme_id 100(update);
+select titulo, soma_fn(preco_da_locacao, 50) as SOMA
+from filme where filme_id = 100;
+*/
+
+select titulo, soma_fn(preco_da_locacao, 5) as SOMA
+from filme where filme_id = 100;
+
+select titulo, preco_da_locacao from filme
+where filme.filme_id = 150;
+
+
+/*2. (Valor 2,0)Criar uma view que seja capaz de retornar dados dos clientes: primeiro_nome,
+cliente_id, endereco, endereco_id, cidade, cidade_id, pais, pais_id e também dados dos
+filmes: filme, titulo, filme_id, ator e ator_id. Depois utilizar a view para consultar os
+primeiro_nome - cliente, titulo-filme de todos filmes alugados por clientes que moram na
+‘Anguilla’;*/
+
+create view dados_filme_cliente_vw as
+	select c.primeiro_nome, c.cliente_id, e.endereco, e.endereco_id, cid.cidade, cid.cidade_id, f.titulo, f.filme_id, ar.primeiro_nome as nome_ator, ar.ator_id, p.pais, p.pais_id from cliente c
+		join endereco e on c.endereco_id = e.endereco_id
+		join cidade cid on e.cidade_id = cid.cidade_id
+        join pais p on cid.pais_id = p.pais_id
+        join aluguel al on al.cliente_id = c.cliente_id
+        join inventario inv on al.inventario_id = inv.inventario_id
+        join filme f on inv.filme_id = f.filme_id
+        join filme_ator fa on fa.filme_id = f.filme_id
+		join ator ar on fa.ator_id = ar.ator_id;
+
+select * from dados_filme_cliente_vw;
+
+select DFC.primeiro_nome, DFC.titulo from dados_filme_cliente_vw DFC
+	where DFC.pais in (
+		select DFC.pais from dados_filme_cliente_vw DFC
+		where DFC.pais = "Anguilla");
+        
+ select DFC.primeiro_nome, DFC.titulo from dados_filme_cliente_vw DFC
+	where DFC.pais = "Anguilla"; 
+
+/*3*/
+delimiter $$
+create trigger nome_verificacao before insert on pais
+	for each row
+		begin
+        
+        declare auxiliar varchar (100);
+        select new.pais from pais where pais = new.pais into auxiliar;
+			if( auxiliar <> null) then
+				set new.pais = "INVALID";
+                end if;            
+        end $$
+delimiter ;
+
+/*4. (Valor 2,0)Criar um procedimento, esse procedimento deve retornar o primeiro_nome e
+valor total gasto por todos os clientes que gastaram mais que 10% do valor gastos pelo
+cliente que será passado por parâmetro de entra(tabela: pagamento); Exemplo parâmetro
+de entrada cliente_id = 10 - Gastou 100 reais, então devo retornar os clientes que
+gastaram mais que 110 reais*/
+
+delimiter $$
+create procedure valor_total(in cliente_id int)
+begin
+	
+    select c.primeiro_nome, sum(p.valor) from cliente c
+	join pagamento p on p.cliente_id = c.cliente_id
+		group by c.primeiro_nome having sum(p.valor) > 1.1*(
+			select sum(p.valor) from pagamento p
+				join cliente c on p.cliente_id = c.cliente_id
+					where c.cliente_id = cliente_id);
+end$$
+delimiter ;
+
+drop procedure valor_total;
+call valor_total(300);
+
+/*1*/
+delimiter $$
+create function qntd_pais(idPais int)
+returns int
+deterministic 
+begin
+    declare cidadesPaisParametro int;
+    declare totalPaises int;
+    declare counter int default 1;
+    declare counterPais int default 0;
+    declare totalPais int default 0;
+
+    select count(c.cidade_id) into cidadesPaisParametro from cidade c
+    where c.pais_id = idPais;
+
+    select count(p.pais_id) into totalPaises from pais p;
+
+    while counter <= totalPaises do
+        select count(c.cidade_id) into totalPais from cidade c
+        where c.pais_id = counter;
+        set counter = counter + 1;
+        if totalPais < (cidadesPaisParametro / 2) then
+            set counterPais = counterPais + 1;
+        end if;
+    end while;
+
+    return counterPais;
+
+end $$
+delimiter ;
+select qntd_pais(60);
+
+drop function qntd_pais;
+
+
