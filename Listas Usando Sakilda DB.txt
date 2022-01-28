@@ -1,0 +1,616 @@
+CREATE database sakila_db;
+use sakila_db;
+SET GLOBAL log_bin_trust_function_creators = 1; /*ativar algo da funcao*/
+
+-- Lista 006
+
+-- 1 Listar os nomes das cidades que não estão sendo utilizadas na tabela endereço;
+select cidade from cidade
+	where cidade_id not in (select cidade_id from endereco);
+    
+-- 2  Lista os nomes dos países que não estão sendo utilizados na tabela cidade;
+select pais from pais
+	where pais_id not in (select pais_id from cidade);
+ 
+-- 3 Listar os nomes dos filmes que não foram alugados nenhuma vez;
+select titulo from filme where filme_id in (
+	select filme_id from inventario where inventario_id not in (
+		select inventario_id from aluguel));
+
+-- 4 Lista as categorias de filmes que não estão sendo usadas;
+select nome from categoria where categoria_id in(
+	select categoria_id from filme_categoria where filme_id not in(
+		select filme_id from filme));
+       
+       
+-- 6 Listar os idiomas dos filmes locados pelo cliente 330;*/
+select idioma.nome from idioma 
+	join filme on filme.idioma_id = idioma.idioma_id
+	join inventario on inventario.filme_id = filme.filme_id
+    join aluguel on aluguel.inventario_id = inventario.inventario_id
+    join cliente on aluguel.cliente_id = cliente.cliente_id
+		where cliente.cliente_id = 330;
+        
+-- 9 Listar o primeiro_nome dos clientes que moram na mesma cidade que o cliente 450;*/
+select cliente.primeiro_nome from cliente 
+	join endereco on cliente.endereco_id = endereco.endereco_id
+		where endereco.cidade_id in (	
+		select cidade.cidade_id from cliente 
+			join endereco on cliente.endereco_id = endereco.endereco_id
+			join cidade on endereco.cidade_id = cidade.cidade_id
+				where cliente.cliente_id = 450);
+                
+-- 10. Listar o primeiro_nome dos clientes que gastaram mais que o cliente 300;*/
+
+select cliente.primeiro_nome from cliente
+	join pagamento on pagamento.cliente_id = cliente.cliente_id
+		group by cliente.primeiro_nome having sum(pagamento.valor) >(
+select sum(pagamento.valor) from pagamento
+	join cliente on pagamento.cliente_id = cliente.cliente_id
+		where cliente.cliente_id = 300);
+        
+select sum(pagamento.valor) from pagamento
+	join cliente on pagamento.cliente_id = cliente.cliente_id
+		where cliente.cliente_id = 300;
+
+
+
+-- CORREÇAO DA PROVA
+
+-- 2A
+select f.titulo from filme f
+join filme_categoria fc on fc.filme_id = f.filme_id
+join categoria c on c.categoria_id = fc.categoria_id
+where c.nome = "Documentary" and f.preco_da_locacao = 2.99;
+
+-- 2B
+-- Left Join
+select c.nome from categoria c							
+left join filme_categoria fc on fc.categoria_id = c.categoria_id
+where fc.categoria_id is null;
+
+-- SubSelect   
+select nome from categoria								
+where categoria_id not in
+	(select categoria_id from filme_categoria);
+    
+-- 2C
+select cliente.primeiro_nome from cliente
+join pagamento on pagamento.cliente_id = cliente.cliente_id
+group by cliente.cliente_id having sum(pagamento.valor) > (select sum(pagamento.valor) from pagamento
+    join cliente on pagamento.cliente_id = cliente.cliente_id
+    where cliente.cliente_id = 150);
+-- OU 
+select cliente.primeiro_nome from cliente
+join pagamento on pagamento.cliente_id = cliente.cliente_id
+group by cliente.cliente_id having sum(pagamento.valor) > (
+	select sum(valor) from pagamento
+    where cliente_id = 150);
+
+-- Select Para descobrir quanto cliente 150
+select sum(valor) from pagamento
+    where cliente_id = 150;
+    
+-- 3
+select primeiro_nome from cliente c 
+ 	join pagamento p on c.cliente_id = p.cliente_id  group by c.cliente_id
+ 		having sum(p.valor) >= (select sum(p.valor) as valor from pagamento p
+ where data_de_pagamento between ('2005-05-01') and ('2005-05-30') and p.cliente_id = 350);
+ 
+select cliente.primeiro_nome from cliente
+join pagamento on pagamento.cliente_id = cliente.cliente_id
+where data_de_pagamento between "2005-05-01" and "2005-05-30"
+group by cliente.cliente_id having sum(pagamento.valor)
+>= ( 
+select  sum(valor) from pagamento
+where cliente_id = 350 
+and data_de_pagamento between "2005-05-01" and "2005-05-30");
+ 
+select  sum(valor) from pagamento
+where cliente_id = 350 
+	and data_de_pagamento between "2005-05-01" and "2005-05-30";
+
+-- 4
+select categoria.nome from categoria 
+join filme_categoria on filme_categoria.categoria_id = categoria.categoria_id
+join filme on filme_categoria.filme_id = filme.filme_id
+group by categoria.categoria_id	having count(filme_categoria.filme_id) > 60;
+
+
+/*LISTA 000 2-BIMESTRE*/
+-- Views:
+-- 1 Criar uma view com primeiro_nome Cliente e Cidade que mora
+create view cliente_cidade_vw as
+select cliente.primeiro_nome, cidade.cidade from cliente
+join endereco on cliente.endereco_id = endereco.endereco_id
+join cidade on endereco.cidade_id = cidade.cidade_id;
+--
+select * from cliente_cidade_vw;
+
+-- 2 Criar uma view com titulo Filme e Categoria
+create view filme_categoria_vw as
+select f.titulo, c.nome from filme f
+join filme_categoria fc on fc.filme_id = f.filme_id
+join categoria c on fc.categoria_id = c.categoria_id;
+--
+
+select * from filme_categoria_vw;
+
+-- 3 Criar uma view primeiro_nome Cliente e média de filmes alugados por ele
+select c.primeiro_nome, avg(inv.filme_id) from cliente c
+join aluguel a on a.cliente_id = c.cliente_id
+join inventario inv on a.inventario_id = inv.inventario_id
+group by c.cliente_id;
+
+
+/* 4 Criar uma view com dados do cliente primeiro_nome, cliente_id, endereco, endereco_id,
+cidade e cidade_id, depois utilizar a view para consultar o primeiro_nome dos clientes que
+moram na mesma cidade que o cliente 400;*/
+drop view cliente_endereco_cidade_vw;
+
+-- Cria a view que retorna o que precisa
+create view cliente_endereco_cidade_vw as
+select c.primeiro_nome, c.cliente_id, e.endereco, e.endereco_id, cid.cidade, cid.cidade_id from cliente c
+join endereco e on c.endereco_id = e.endereco_id
+join cidade cid on e.cidade_id = cid.cidade_id;
+
+--
+
+select * from cliente_endereco_cidade_vw;
+
+-- Retorna id da cidade do cliente 400 com select 
+select cid.cidade_id from cidade cid
+join endereco e on e.cidade_id = cid.cidade_id
+join cliente c on c.endereco_id = e.endereco_id
+where c.cliente_id = 400;
+
+-- Retorna id da cidade do cliente 400 pela view
+select CEC.cidade_id from cliente_endereco_cidade_vw CEC
+    where CEC.cliente_id = 400;
+    
+-- Exercicio usando so view
+select CEC.primeiro_nome from cliente_endereco_cidade_vw CEC
+where CEC.cidade_id = (
+	select CEC.cidade_id from cliente_endereco_cidade_vw CEC
+    where CEC.cliente_id = 400);
+    
+-- Usando subselect 
+select CEC.primeiro_nome from cliente_endereco_cidade_vw CEC
+where CEC.cidade_id = (
+	select cid.cidade_id from cidade cid
+	join endereco e on e.cidade_id = cid.cidade_id
+	join cliente c on c.endereco_id = e.endereco_id
+	where c.cliente_id = 400);
+
+/* 5 Criar uma view com dados do filme, titulo, filme_id, ator e ator_id. Depois utilizar a view
+para consultar o titulo dos filmes que tem pelo menos um ator do filme 'WYOMING
+STORM.*/
+
+create view dados_filme_ator as
+select f.titulo, f.filme_id, a.primeiro_nome, a.ator_id from filme f
+join filme_ator fa on fa.filme_id = f.filme_id
+join ator a on fa.ator_id = a.ator_id;
+
+-- Retorna atores do filme
+select DFA.ator_id from dados_filme_ator DFA
+	where DFA.titulo = "WYOMING STORM";
+    
+-- Exercicio
+select DFA.titulo from dados_filme_ator DFA
+where DFA.ator_id in (
+	select DFA.ator_id from dados_filme_ator DFA
+	where DFA.titulo = "WYOMING STORM");
+
+/*Funções Básicas
+1) Criar uma função que soma;
+2) Criar uma função que multiplica;
+3) Criar uma função que subtração;
+4) Utilizar a função soma para aumenta o valor do filme preco_da_locacao(select);
+5) Utilizar a função soma para aumenta o valor do filme preco_da_locacao filme_id
+100(update);
+6) Criar uma função(aumento_10) que aumenta em 10% o valor de uma parâmetro de entrada;
+7) Utilizar a função aumento_10 para aumentar o valor do filme de id 150(update);
+8) Criar uma função, que considera a entrada de um parâmetro inteiro N, utilizando esse
+parâmetro N retornar o titulo do filme correspondente;
+9) Criar uma função, que considera a entrada de um parâmetro inteiro N, utilizando esse
+parâmetro N retornar o nome da categoria correspondente;*/
+
+SET GLOBAL log_bin_trust_function_creators = 1; /*--ativar algo da funcao*/
+
+create function soma_fn(a int,b int)
+returns int
+return a+b;
+
+select soma_fn(15, 15) as soma;
+
+create function multiplica_fn(a int,b int)
+returns int
+return a*b;
+
+select multiplica_fn(2, 10) as multiplica;
+
+create function subtrai_fn(a int,b int)
+returns int
+return a-b;
+
+select subtrai_fn(10, 2) as subtrai;
+
+select titulo, soma_fn(preco_da_locacao, 5) as SOMA
+from filme where filme_id = 100;
+
+select titulo, preco_da_locacao from filme
+where filme.filme_id = 150;
+
+use sakila_db;
+
+delimiter $$
+create procedure filme_titulo_id (in id_filme int)
+begin
+	select titulo from filme
+    where filme_id = id_filme into id_filme;
+end$$
+delimiter ;
+
+call filme_titulo_id (2);
+
+-- -------------------------------------------------------------------------------------------------
+
+use sakila_db;
+-- Lista Funções e Procedimentos:
+
+-- 1) Criar um procedimento que possibilite a troca de dois valores de variáveis set @a int, set @b int;
+
+set @a = 90;
+set@b = 10;
+
+delimiter $$
+create procedure  troca(inout x int, inout y int)
+begin
+	declare aux int;
+    
+    set aux = x;
+    set x = y;
+    set y = aux;
+    
+end $$
+delimiter ;
+drop procedure troca;
+
+call troca(@a, @b);
+
+select @a, @b;
+
+-- 2) Criar um procedimento para buscar o titulo do filme utilizando o filme_id como parâmetro,
+-- Obs: o titulo do filme será utilizado em outro operação no BD posteriormente;\
+
+delimiter $$
+create procedure busca_tit(in id_filme int, out tit_filme varchar(100)) 
+begin
+	select titulo from filme
+		where filme_id = id_filme;
+end $$
+delimiter ;
+
+call busca_tit(10,@saida_tit);
+
+-- Utilize o titulo do filme do procedimento anterior, criar um procedimento para buscar o
+-- filme utilizando o titulo e aumenta o seu valor de preco_de_locacao em 10%.
+
+delimiter $$
+create procedure  aumenta_valor(in tit_filme varchar(100))
+begin 
+	declare aux int;
+		select filme_id from filme
+			where titulo = tit_filme into aux;
+            
+	update filme set preco_da_locacao = preco_da_locacao *1.1
+		where filme_id = aux;
+end $$
+delimiter ;
+
+drop procedure aumenta_valor;
+
+call aumenta_valor(@saida_tit);
+
+select preco_da_locacao from filme
+	where titulo = @saida_tit;
+
+/*4) Criar uma procedimento que tenha dois parâmetro por referencia( a e b), o parâmetro a deve
+receber o valor do dobro de b e b deve receber o valor de a + 5, lembrar esses parâmetros
+podem ser utilizado posteriormente em outros procedimentos;*/
+
+set @c = 2;
+set @d = 3;
+
+delimiter $$
+create procedure  contas(inout a int, inout b int)
+begin 
+	declare auxA int;
+    declare auxB int;
+	
+    set auxA = a;
+    set auxB = b;
+    
+	set a= (2*auxB);
+	set b = (auxA + 5);	
+    
+end $$
+delimiter ;
+
+drop procedure contas;
+
+call contas(@c, @d);
+
+select @c, @d;
+
+/*5) Criar um procedimento com quatro parâmetros, a, b, c e d dentro do procedimento deve
+ocorrer a troca de valores, a recebe valor de b, b recebe o valor de a, c recebe o valor de d e
+d recebe o valor de c;*/
+
+set @e = 1;
+set @f = 2;
+set @g = 3;
+set @h = 4;
+
+delimiter $$
+create procedure  troca_complexa(inout a int, inout b int,inout c int, inout d int)
+begin
+	declare auxAB int;
+    declare auxCD int;
+    
+    set auxAB = a;
+    set a = b;
+    set b = auxAB;
+    
+    set auxCD = c;
+    set c = d;
+    set d = auxCD;
+    
+end $$
+delimiter ;
+
+call troca_complexa(@e, @f, @g, @h);
+
+select @e, @f, @g, @h;
+
+
+/*6) Criar um procedimento que conte a quantidade de atores de um filme, filme_id será um
+parâmetro de entrada e número de atores do filme um parâmetro de saída;*/
+
+delimiter $$
+create procedure  num_atores(in id_filme int, out n_atores int)
+begin
+	select count(ator_id) from filme_ator
+			where filme_id = id_filme;
+end $$
+delimiter ;
+
+drop procedure num_atores;
+
+call num_atores(40, @n_atores);
+
+-- Lista 002 Estrutura Condicionais e Estrutura de Repetição
+/*Desenvolver utilizando procedimento, o parâmetro de entra é um número inteiro, retornar
+através de um select(‘Número é Par’) ou select(Número é impar), pesquisar a função MOD
+em MYSQL;*/
+
+set @tipo = '';
+
+delimiter $$
+create procedure par_impar(in valor int)
+begin
+    if (mod(valor,2) = 0) then
+		set @tipo = 'Par';
+	else
+		set @tipo = 'Impar';
+	end if;
+end$$
+delimiter ;
+
+drop procedure par_impar;
+
+call par_impar(40);
+call par_impar(43);
+
+select @tipo;
+
+/*Desenvolver Procedimento, pensar em um banco de dados de atletas, pensar que será
+utilizado um parâmetro de entrada que é a idade desses atletas, esse procedimento terá um
+parâmetro de saída que armazenara em qual categoria esse atleta deve ser inserido:*/
+
+delimiter $$
+create procedure categoria_atletas(in idade int, out categoria varchar(40))
+begin
+	if idade >= 5 and idade <= 7 then
+		set @categoria = 'Infantil A';
+        
+	elseif  idade >= 8 and idade <= 10 then
+		set @categoria = 'Infantil B';
+        
+	elseif  idade >= 11 and idade <= 13 then
+		set @categoria = 'Juvenil A';
+        
+	elseif  idade >= 14 and idade <= 17 then
+		set @categoria = 'Juvenil B';
+	
+    elseif  idade >= 18 then
+		set @categoria = 'Senior';
+        
+	end if;   
+end$$
+delimiter ;
+
+drop procedure categoria_atletas;
+
+call categoria_atletas(67, @categorias);
+call categoria_atletas(12, @categorias);
+
+select @categoria;
+
+/*3-Escreva um programa que escreva na tela, de 1 ate 100, de 1 em 1, 3 vezes. A primeira vez
+deve usar a estrutura de repetição repeat, a segunda while, e a terceira loop*/
+
+-- Loop
+delimiter $$
+create procedure contadora_loop()
+begin
+	declare contadora int default 1;
+	loop_aux: loop
+		set contadora = contadora + 1;
+            select (contadora);
+				if contadora = 5 then
+					leave loop_aux;
+		end if;
+	end loop loop_aux;
+end$$
+delimiter ;
+drop procedure contadora_loop;
+call contadora_loop();
+
+-- While
+delimiter $$
+create procedure contadora_while()
+begin
+	declare contadora int default 1;
+    while contadora <= 5 do
+		select (contadora);
+		set contadora =  contadora + 1;
+    end while;
+    end$$
+delimiter ;
+drop procedure contadora_while;
+call contadora_while();
+
+-- Repeat
+delimiter $$
+create procedure contadora_repeat()
+begin
+	declare contadora int default 1;
+    repeat
+		set contadora = contadora + 1;
+	UNTIL contadora = 5
+    end repeat;
+    select contadora;
+    end$$
+delimiter ;
+drop procedure contadora_repeat;
+call contadora_repeat();
+
+/* 4 - Procedimento com 4 parâmetros(op_calc, num_1, num_2 e resultado);
+op_calc = Qual das opções de calculo;
+num_1 e num_2 = números que serão utilizados no calculo;
+resultado = saída do procedimento com o resultado;
+Opções para o cálculo das seguintes operações entre dois números:
+adição (opção 1)
+subtração (opção 2)
+multiplicação (opção 3)
+divisão (opção 4) */
+
+delimiter $$
+create procedure calculadora(in opcao int, in num_1 int, in num_2 int, out resultado int)
+begin
+	declare soma int;
+    declare sub int;
+    declare mult int;
+    declare divi int;
+    
+	case opcao
+	when 1 then
+		set soma = (num_1 + num_2);
+	select (soma);
+    
+    when 2 then
+		set sub = (num_1 - num_2);
+	select (sub);
+    
+    when 3 then
+		set mult = (num_1 * num_2);
+	select (mult);
+    
+    when 4 then
+		set divi = (num_1 / num_2);
+	select (divi);
+	end case;
+end$$
+delimiter ;
+
+call calculadora(4, 2, 2, @resultado);
+
+/*5-Desenvolver utilizando função ou procedimento, o parâmetro de entra é um número
+inteiro(id de um filme), utilizando esse parâmetro de entrada buscar o preco_da_locacacao
+do filme:
+Se o filme custa 0.99 ou menos adicionar 1 real o valor;
+Se o filme custa mais que 0.99 e menos que 1.99 adicionar 0.70 centavos ao valor;
+Se o filme custa mais que 1.99 e menos que 2.99 adicionar 0.50 centavos ao valor;
+Se o filme custa mais que 2.99 adicionar 0.20 centavos ao valor;
+Não é necessário alterar o banco, somente mostrar o valor atualizado ou retornar o valor
+atualizado.*/
+
+delimiter $$
+create function modificapreco(id_filme int)
+returns decimal(4,2)
+begin
+	declare aux decimal(4,2);
+    declare valor decimal(4,2);
+select preco_da_locacao from filme where filme_id = id_filme into valor;
+
+	if valor <= 0.99 then
+		set aux = valor + 1;
+    
+    elseif valor > 0.99 and valor <= 1.99 then
+		set aux = valor + 0.70;
+	
+    elseif valor > 1.99 and valor <= 2.99 then
+		set aux = valor + 0.50;
+        
+	else
+		set aux = valor + 0.20;
+        
+	end if;
+    
+    return aux;
+end$$
+delimiter ;
+drop function modificapreco;
+select modificapreco(2); -- preco modificado
+
+select preco_da_locacao from filme where filme_id = 2; -- preco normal
+
+/*6) Desenvolver um procedimento, parâmetro de entra é um número inteiro(id do funcionário,
+para teste lembrar o banco de dados sakila só possui funcionário 1 e 2):
+se o funcionário vendeu menos que 33500 retorna em um parâmetro de saída bônus de 500
+reais;
+se o funcionário vendeu mais que 33500 retorna em um parâmetro de saída bônus de 5% do
+total da venda.*/
+
+delimiter $$
+create function bonusfunc (id_funcionario int)
+returns decimal
+begin
+
+declare valor decimal;
+declare valortotal decimal;
+select sum(p.valor) from pagamento p 
+join funcionario f on p.funcionario_id = f.funcionario_id where p.funcionario_id = id_funcionario into valor;
+
+ if valor < 33500 then
+ set valortotal = valor + 500;
+ 
+ else 
+ set valortotal = valor * 1.05;
+ 
+ end if;
+ return valortotal;
+
+end $$
+delimiter ;
+select bonusfun78c (2);
+drop function bonusfunc;
+
+	
+
+
+
+
+
+
